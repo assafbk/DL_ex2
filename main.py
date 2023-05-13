@@ -148,7 +148,7 @@ if __name__ == "__main__":
         results = []
         try:
             for epoch in range(num_epochs):
-                print('starting epoch {}'.format(epoch))
+                print('\nstarting epoch {}'.format(epoch))
                 if epoch > 3:
                     for g in optimizer.param_groups:
                         g['lr'] *= 0.5

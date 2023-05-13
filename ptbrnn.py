@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import numpy as np
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 class PTBRNN(nn.Module):
     def __init__(self, vocab_size=50000, emb_dim=200, dropout_p=0, lstm_or_gru='lstm'):
@@ -21,7 +18,8 @@ class PTBRNN(nn.Module):
         self.vocab_size = vocab_size
         self.emb_dim = emb_dim
         self.token2emb = nn.Embedding(vocab_size, emb_dim)
-        self.emb2token = nn.Linear(emb_dim, vocab_size, bias=False)
+        # self.emb2token = nn.Linear(emb_dim, vocab_size, bias=False)
+        self.emb2token = nn.Linear(emb_dim, vocab_size)
         self.dropout = nn.Dropout(p=dropout_p)
 
 

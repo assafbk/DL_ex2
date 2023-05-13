@@ -11,6 +11,7 @@ import pandas as pd
 from data_handler import DataHandler
 from ptbrnn import PTBRNN
 
+epsilon = 1e-10
 torch.manual_seed(1)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('device: {}'.format(device))
@@ -48,7 +49,7 @@ def train(model, train_data, args, criterion, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        cur_perplexity = torch.exp2(loss.detach())
+        cur_perplexity = torch.exp(loss.detach())
         avg_perplexity += cur_perplexity
         if cur_iter % 100 == 0:
             print('iter = {}, perp = {}'.format(cur_iter, cur_perplexity))
@@ -76,18 +77,15 @@ def evaluate(model, test_data, args, criterion, device):
 
     avg_perplexity=0
     with torch.no_grad():
-        # correct = 0
-        # total = 0
         for i in range(0, num_of_batches * seq_len, seq_len):
             cur_iter = int(i / seq_len)
-            # h_and_c = detach_h_and_c(h_and_c)
             input = train_data[:, i:i + seq_len]
             wanted_output = train_data[:, i + 1:i + seq_len + 1]
             input, wanted_output = input.to(device), wanted_output.to(device)
             output, h_and_c = model(input, h_and_c)
             loss = criterion(output.reshape(-1, model.vocab_size), wanted_output.reshape(-1))
 
-            cur_perplexity = torch.exp2(loss)
+            cur_perplexity = torch.exp(loss)
             avg_perplexity += cur_perplexity
 
             if i==seq_len: #FIXME DEBUG - output the first prediction
@@ -149,7 +147,7 @@ if __name__ == "__main__":
         try:
             for epoch in range(num_epochs):
                 print('\nstarting epoch {}'.format(epoch))
-                if epoch > 3:
+                if (args.dropout_p > epsilon and epoch > 7) or (args.dropout_p <= epsilon and epoch > 3):
                     for g in optimizer.param_groups:
                         g['lr'] *= 0.5
                     print('reduced lr by factor of 2')

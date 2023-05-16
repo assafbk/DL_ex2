@@ -79,8 +79,8 @@ def evaluate(model, test_data, args, criterion, device):
     with torch.no_grad():
         for i in range(0, num_of_batches * seq_len, seq_len):
             cur_iter = int(i / seq_len)
-            input = train_data[:, i:i + seq_len]
-            wanted_output = train_data[:, i + 1:i + seq_len + 1]
+            input = test_data[:, i:i + seq_len]
+            wanted_output = test_data[:, i + 1:i + seq_len + 1]
             input, wanted_output = input.to(device), wanted_output.to(device)
             output, h_and_c = model(input, h_and_c)
             loss = criterion(output.reshape(-1, model.vocab_size), wanted_output.reshape(-1))
@@ -94,7 +94,7 @@ def evaluate(model, test_data, args, criterion, device):
                 output = output.cpu()
                 decoded_predicted = data_handler.decode_seq(np.argmax(output,2))
                 for iseq in range(num_seq_in_batch):
-                    print('seq {}: {} \ {}'.format(iseq, ' '.join(decoded_wanted[iseq,10:]).replace('\n','<eos>'), decoded_predicted[iseq,-1].replace('\n','<eos>')))
+                    print('seq {}: {} \ {}'.format(iseq, ' '.join(decoded_wanted[iseq,:]).replace('\n','<eos>'), decoded_predicted[iseq,-1].replace('\n','<eos>')))
 
         avg_perplexity = avg_perplexity/num_of_batches
         print('avg perplexity = {}'.format(avg_perplexity))
@@ -118,7 +118,8 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=13, help='Training number of epochs')
     # parser.add_argument('--model-path', type=str, default=None, help='Path to saved model, test only')
     parser.add_argument('--show', action='store_true', help='Show plots')
-    parser.add_argument('--seq_len', type=float, default=35, help='sequence length')
+    # parser.add_argument('--seq_len', type=float, default=35, help='sequence length')
+    parser.add_argument('--seq_len', type=float, default=20, help='sequence length')
     return parser.parse_args()
 
 
@@ -158,7 +159,7 @@ if __name__ == "__main__":
                 avg_val_perplexity = evaluate(model, val_data, args, criterion, device)
 
                 print('Epoch {}: avg training perp = {:.3f}, avg validation perp = {:.3f}'.format(
-                    epoch + 1, avg_train_perplexity, avg_val_perplexity))
+                    epoch, avg_train_perplexity, avg_val_perplexity))
 
                 train_perp_list.append(avg_train_perplexity)
                 val_perp_list.append(avg_val_perplexity)

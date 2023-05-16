@@ -23,6 +23,17 @@ def detach_h_and_c(h_and_c, num_of_layers=2):
 
     return h_and_c
 
+def plot_grad_norms(grad_norms):
+    legend_names = ['layer_0_h', 'layer_0_x', 'layer_0_h_bias', 'layer_0_x_bias', 'layer_1_h', 'layer_1_x', 'layer_1_h_bias', 'layer_1_x_bias', 'token2emb_mat', 'emb2token_mat', 'emb2token_bias']
+    for i in range(grad_norms.shape[0]):
+        plt.plot(range(1, grad_norms.shape[1] + 1), 10*np.log10(grad_norms[i,:]), label=legend_names[i])
+
+    plt.xlabel('iter')
+    plt.ylabel('grad norms [dB]')
+    plt.title(f'grad norms per iter')
+    plt.legend()
+    plt.show()
+
 def train(model, train_data, args, criterion, optimizer, device):
     model.train()
     seq_len = args.seq_len
@@ -54,10 +65,17 @@ def train(model, train_data, args, criterion, optimizer, device):
         if cur_iter % 100 == 0:
             print('iter = {}, perp = {}'.format(cur_iter, cur_perplexity))
 
+        for g in optimizer.param_groups:
+            for ipg, param_group in enumerate(g['params']):
+                grad_norm[ipg,cur_iter] = float(torch.norm(param_group.view(-1)))/len(param_group.view(-1))
+        # print('grad norms = ', ["{:.2f}".format(i) for i in grad_norm[:,cur_iter]])
+
     #     _, predicted = torch.max(outputs.data, 1)
     #     total += labels.size(0)
     #     correct += (predicted == labels).sum().item()
     # accuracy = 100 * correct / total
+
+    plot_grad_norms(grad_norm)
 
     avg_perplexity = avg_perplexity/num_of_batches
     return float(avg_perplexity)

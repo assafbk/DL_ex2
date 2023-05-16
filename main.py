@@ -48,6 +48,7 @@ def train(model, train_data, args, criterion, optimizer, device):
                     torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device)))  # layer 1
 
     avg_perplexity=0
+    grad_norm = np.zeros([11,num_of_batches])
     for i in range(0,num_of_batches*seq_len,seq_len):
         cur_iter = int(i/seq_len)
         h_and_c = detach_h_and_c(h_and_c)

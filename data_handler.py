@@ -3,9 +3,9 @@ import numpy as np
 
 
 class DataHandler:
-    def __init__(self, num_of_batches=20):
+    def __init__(self, batch_size=20):
         self.init_dict()
-        self.num_of_batches = num_of_batches
+        self.batch_size = batch_size
 
     def init_dict(self):
         with open("./data/ptb.train.txt") as f:
@@ -40,10 +40,10 @@ class DataHandler:
 
     def get_coded_data_from_file(self, file):
         data = file[1:].split(' ')
-        batch_size = int(np.floor(len(data) / self.num_of_batches))
-        data = data[0:batch_size * self.num_of_batches]
+        partition_size = int(np.floor(len(data) / self.batch_size)) # partition #i is all of the data that will be seen by entry #i of the batch
+        data = data[0:partition_size * self.batch_size]
         coded_data = torch.LongTensor([self.coded_dict[word] for word in data])
-        coded_data = torch.reshape(coded_data, (self.num_of_batches, batch_size))
+        coded_data = torch.reshape(coded_data, (self.batch_size, partition_size))
         return coded_data
 
     def decode_seq(self, seq):

@@ -4,16 +4,14 @@ import torch.nn as nn
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class PTBRNN(nn.Module):
-    def __init__(self, vocab_size=50000, emb_dim=200, dropout_p=0, lstm_or_gru='lstm'):
+    def __init__(self, vocab_size=50000, emb_dim=200, dropout_p=0, use_gru=False):
         super(PTBRNN, self).__init__()
-        if lstm_or_gru == 'lstm':
-            self.rnn_layer_1 = nn.LSTM(input_size=emb_dim,hidden_size=emb_dim,batch_first=True)
-            self.rnn_layer_2 = nn.LSTM(input_size=emb_dim, hidden_size=emb_dim,batch_first=True)
-        elif lstm_or_gru == 'gru':
-            self.rnn_layer_1 = nn.GRU(input_size=emb_dim, hidden_size=emb_dim,batch_first=True)
-            self.rnn_layer_2 = nn.GRU(input_size=emb_dim, hidden_size=emb_dim,batch_first=True)
+        if use_gru:
+            self.rnn_layer_1 = nn.GRU(input_size=emb_dim, hidden_size=emb_dim, batch_first=True)
+            self.rnn_layer_2 = nn.GRU(input_size=emb_dim, hidden_size=emb_dim, batch_first=True)
         else:
-            raise('the value of lstm_or_gru should be "lstm" or "gru"')
+            self.rnn_layer_1 = nn.LSTM(input_size=emb_dim, hidden_size=emb_dim, batch_first=True)
+            self.rnn_layer_2 = nn.LSTM(input_size=emb_dim, hidden_size=emb_dim, batch_first=True)
 
         self.vocab_size = vocab_size
         self.emb_dim = emb_dim

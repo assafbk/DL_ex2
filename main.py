@@ -16,10 +16,26 @@ torch.manual_seed(1)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('device: {}'.format(device))
 
-def detach_h_and_c(h_and_c, num_of_layers=2):
+def detach_h_and_c(h_and_c, use_gru, num_of_layers=2):
     for i in range(num_of_layers):
-        for j in range(2):
-            h_and_c[i][j].detach_()
+        if use_gru:
+            h_and_c[i].detach_()
+        else:
+            for j in range(2):
+                h_and_c[i][j].detach_()
+
+    return h_and_c
+
+def init_h_and_c(num_seq_in_batch, emb_dim, use_gru):
+    h_and_c = []
+    if use_gru:
+        h_and_c.append(torch.zeros([1, num_seq_in_batch, emb_dim], device=device))  # layer 0
+        h_and_c.append(torch.zeros([1, num_seq_in_batch, emb_dim], device=device))  # layer 1
+    else:
+        h_and_c.append((torch.zeros([1, num_seq_in_batch, emb_dim], device=device),
+                        torch.zeros([1, num_seq_in_batch, emb_dim], device=device)))  # layer 0
+        h_and_c.append((torch.zeros([1, num_seq_in_batch, emb_dim], device=device),
+                        torch.zeros([1, num_seq_in_batch, emb_dim], device=device)))  # layer 1
 
     return h_and_c
 
@@ -41,17 +57,11 @@ def train(model, train_data, args, criterion, optimizer, device):
     num_of_batches = int(np.floor(train_data.shape[1]/seq_len))
     # num_of_batches = 5
 
-    h_and_c = []
-    h_and_c.append((torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device),
-                    torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device)))  # layer 0
-    h_and_c.append((torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device),
-                    torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device)))  # layer 1
-
-    avg_perplexity=0
+    h_and_c = init_h_and_c(num_seq_in_batch, model.emb_dim, args.use_gru)
     grad_norm = np.zeros([11,num_of_batches])
     for i in range(0,num_of_batches*seq_len,seq_len):
         cur_iter = int(i/seq_len)
-        h_and_c = detach_h_and_c(h_and_c)
+        h_and_c = detach_h_and_c(h_and_c, args.use_gru)
         input = train_data[:,i:i+seq_len]
         wanted_output = train_data[:,i+1:i+seq_len+1]
         input, wanted_output = input.to(device), wanted_output.to(device)
@@ -88,13 +98,8 @@ def evaluate(model, test_data, args, criterion, device):
     num_seq_in_batch = test_data.shape[0]
     num_of_batches = int(np.floor(test_data.shape[1] / seq_len))
 
-    h_and_c = []
-    h_and_c.append((torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device),
-                    torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device)))  # layer 0
-    h_and_c.append((torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device),
-                    torch.zeros([1, num_seq_in_batch, model.emb_dim], device=device)))  # layer 1
-
-    avg_perplexity=0
+    h_and_c = init_h_and_c(num_seq_in_batch, model.emb_dim, args.use_gru)
+    avg_ce=0
     with torch.no_grad():
         for i in range(0, num_of_batches * seq_len, seq_len):
             cur_iter = int(i / seq_len)
@@ -132,18 +137,21 @@ def parse_args():
     parser.add_argument('--phase', type=str, default='train', help='Phase: train/test/plot')
     # parser.add_argument('--batchnorm', action='store_true', default=False, help='Add batchnorm')
     parser.add_argument('--dropout_p', type=float, default=0, help='Add dropout, enter probability')
-    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1, help='learning rate')
     # parser.add_argument('--weight_decay', type=float, default=0, help='Add weight decay')
     parser.add_argument('--epochs', type=int, default=13, help='Training number of epochs')
     # parser.add_argument('--model-path', type=str, default=None, help='Path to saved model, test only')
     parser.add_argument('--show', action='store_true', help='Show plots')
     # parser.add_argument('--seq_len', type=float, default=35, help='sequence length')
     parser.add_argument('--seq_len', type=float, default=20, help='sequence length')
+    parser.add_argument('--use_gru', action='store_true', help='use grue instead of lstm')
+    parser.add_argument('--rand_seed', type=float, default=1, help='random seed')
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+    torch.manual_seed(args.rand_seed)
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
@@ -155,9 +163,15 @@ if __name__ == "__main__":
     test_data = data_handler.get_data('test')
 
 
-    model = PTBRNN(vocab_size=data_handler.vocab_size, dropout_p=args.dropout_p).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    model = PTBRNN(vocab_size=data_handler.vocab_size, dropout_p=args.dropout_p, use_gru=args.use_gru).to(device)
+    # model.init_weights()
+
+    CE_weights = torch.ones(data_handler.vocab_size)
+    CE_weights[2],CE_weights[44],CE_weights[45]=[0,0,0]
+    CE_weights=CE_weights.to(device)
+    criterion = nn.CrossEntropyLoss(CE_weights)
+    # optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr)
     num_epochs = args.epochs
 
     if args.phase == "train":
@@ -167,7 +181,7 @@ if __name__ == "__main__":
         try:
             for epoch in range(num_epochs):
                 print('\nstarting epoch {}'.format(epoch))
-                if (args.dropout_p > epsilon and epoch > 7) or (args.dropout_p <= epsilon and epoch > 3):
+                if (args.dropout_p > epsilon and epoch > num_epochs-9) or (args.dropout_p <= epsilon and epoch > 3):
                     for g in optimizer.param_groups:
                         g['lr'] *= 0.5
                     print('reduced lr by factor of 2')

@@ -33,8 +33,17 @@ class PTBRNN(nn.Module):
         model_output = self.emb2token(output2)
         return model_output, h_and_c
 
-    def init_weights(self):
-        initrange = 0.1
-        self.token2emb.weight.data.uniform_(-initrange, initrange)
-        self.emb2token.bias.data.fill_(0)
-        self.emb2token.weight.data.uniform_(-initrange, initrange)
+    def init_weights(self, initrange=0.1):
+        if initrange > 0:
+            self.token2emb.weight.data.uniform_(-initrange, initrange)
+            self.emb2token.bias.data.fill_(0)
+            self.emb2token.weight.data.uniform_(-initrange, initrange)
+            for p in self.rnn_layer_1.all_weights:
+                for param_group in p:
+                    param_group.data.uniform_(-initrange,initrange)
+
+            for p in self.rnn_layer_2.all_weights:
+                for param_group in p:
+                    param_group.data.uniform_(-initrange,initrange)
+        else:
+            return

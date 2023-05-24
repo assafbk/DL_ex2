@@ -16,7 +16,6 @@ class PTBRNN(nn.Module):
         self.vocab_size = vocab_size
         self.emb_dim = emb_dim
         self.token2emb = nn.Embedding(vocab_size, emb_dim)
-        # self.emb2token = nn.Linear(emb_dim, vocab_size, bias=False)
         self.emb2token = nn.Linear(emb_dim, vocab_size)
         self.dropout = nn.Dropout(p=dropout_p)
 
